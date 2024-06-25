@@ -1,3 +1,4 @@
+use std::fs;
 use std::io::prelude::*;
 use std::net::TcpListener;
 use std::net::TcpStream;
@@ -13,11 +14,20 @@ fn main() {
         println!("message done");
     }
     fn handle_connection(mut stream: TcpStream) {
-        // we are making a buffer filled with 0s that is of size 1024
         let mut buffer = [0; 1024];
-        // thsi puts everything into the buffer? reading the stream
         stream.read(&mut buffer).unwrap();
-        // this prints out the whole buffer?
-        println!("Request {}", String::from_utf8_lossy(&buffer[..]))
+        // specify the url path after the slash
+        let get = b"GET / HTTP/1.1\r\n";
+        let (status_line, filename) = if buffer.starts_with(get) {
+            ("HTTP/1.1 200 OK", "hello.html")
+        } else {
+            ("HTTP/1.1 404 NOT FOUND", "404.html")
+        };
+        let contents = fs::read_to_string(filename).unwrap();
+        let response = format!(
+            "{}\r\nContent-Length: {}\r\n\r\n{}",status_line, contents.len(), contents
+        );
+        stream.write(response.as_bytes()).unwrap();
+        stream.flush().unwrap();
     }
 }
